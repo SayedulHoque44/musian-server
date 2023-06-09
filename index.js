@@ -123,6 +123,34 @@ async function run() {
       res.send(result)
 
     })
+    //  isAdmin Check
+    app.get('/usersRole/:email',async(req,res)=>{
+      const email = req.params.email
+      const query = {email:email}
+      const result = await usersCollection.findOne(query)
+      res.send(result)
+
+    })
+    //  get all User : Admin
+    app.get('/users',async(req,res)=>{
+      
+      const result = await usersCollection.find().toArray()
+      res.send(result)
+
+    })
+    //  Chang User Role : Admin
+    app.patch('/userRoleChange/:id',async(req,res)=>{
+      const id = req.params.id
+      const role = req.body
+      const query = {_id:new ObjectId(id)}
+      const updateDoc = {
+        $set:role
+      }
+      const result = await usersCollection.updateOne(query,updateDoc)
+      res.send(result)
+
+    })
+
 
 
     // Send a ping to confirm a successful connection
