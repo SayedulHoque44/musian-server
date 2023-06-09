@@ -40,7 +40,14 @@ async function run() {
         const result = await classesCollection.insertOne(newClass)
         res.send(result)
     })
-   
+    // update a class : Instructor
+    app.patch('/classesInstructor/:id',async(req,res)=>{
+      const id = req.params.id
+      const newClass = req.body
+
+      // const result = await classesCollection.insertOne(newClass)
+      res.send(newClass)
+  })
     // delete a class : Instructor
     app.delete('/classesInstructor/:id',async(req,res)=>{
         const id = req.params.id
