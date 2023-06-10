@@ -109,6 +109,21 @@ async function run() {
         const result = await classesCollection.updateOne(query,updateDoc)
         res.send(result)
     })
+    app.patch('/classSets/:id',async(req,res)=>{
+      const id = req.params.id 
+      
+      const classObj = await classesCollection.findOne({_id:new ObjectId(id)})
+      if(classObj){
+        const updateDoc = {
+          $set:{
+            availableSets: classObj.availableSets - 1,
+          }
+        }
+        const result = await classesCollection.updateOne({_id: new ObjectId(id)},updateDoc)
+        res.send(result)
+      }
+      
+    })
     // --------------------------users Related
     //  insert a user 
     app.post('/users',async(req,res)=>{
@@ -213,6 +228,18 @@ async function run() {
       const payment = req.body
 
       const result = await paymentsCollection.insertOne(payment)
+      res.send(result)
+    })
+    // get all payment 
+    app.get('/payments',async(req,res)=>{
+
+      const result = await paymentsCollection.find().toArray()
+      res.send(result)
+    })
+    // get  payment by email
+    app.get('/payments/:email',async(req,res)=>{
+      const email = req.params.email
+      const result = await paymentsCollection.find({email:email}).toArray()
       res.send(result)
     })
 
