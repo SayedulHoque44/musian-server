@@ -3,6 +3,7 @@ const app = express()
 const cors = require('cors')
 const port = process.env.PORT || 5000
 require('dotenv').config()
+const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY)
 // middleware
 app.use(cors())
 app.use(express.json())
@@ -32,6 +33,7 @@ async function run() {
     const classesCollection = client.db('musicianDb').collection('classes')
     const usersCollection = client.db('musicianDb').collection('users')
     const enrollCollection = client.db('musicianDb').collection('enroll')
+    const paymentsCollection = client.db('musicianDb').collection('payments')
 
     // --------------------------classes Related
     // Insert a classes : Instructor
@@ -180,6 +182,37 @@ async function run() {
       const email = req.params.email 
       
       const result = await enrollCollection.find({email:email}).toArray()
+      res.send(result)
+    })
+    // delete enrolled class
+    app.delete('/enroll/:id',async(req,res)=>{
+      const id = req.params.id 
+      const result = await enrollCollection.deleteOne({_id:new ObjectId(id)})
+      res.send(result)
+    })
+
+    // Payment Related
+    // 
+    app.post('/create-payment-intent',async(req,res)=>{
+      const {ClassPrice} = req.body
+      const amount = ClassPrice*100
+      // console.log(amount)
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount:amount,
+        currency:"usd",
+        payment_method_types: [
+          "card"
+        ],
+      })
+      res.send({
+        clientSecret:paymentIntent.client_secret,
+      })
+    })
+    // payment collection 
+    app.post('/payments',async(req,res)=>{
+      const payment = req.body
+
+      const result = await paymentsCollection.insertOne(payment)
       res.send(result)
     })
 
