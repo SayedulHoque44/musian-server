@@ -31,16 +31,18 @@ async function run() {
     
     const classesCollection = client.db('musicianDb').collection('classes')
     const usersCollection = client.db('musicianDb').collection('users')
+    const enrollCollection = client.db('musicianDb').collection('enroll')
 
     // --------------------------classes Related
-    // Insert a class : Instructor
+    // Insert a classes : Instructor
     app.post('/classes',async(req,res)=>{
         const newClass = req.body
 
         const result = await classesCollection.insertOne(newClass)
         res.send(result)
     })
-    // update a class : Instructor
+    
+    // update a classes : Instructor
     app.patch('/classesInstructor/:id',async(req,res)=>{
       const id = req.params.id
       const newClass = req.body
@@ -52,25 +54,29 @@ async function run() {
       const result = await classesCollection.updateOne(query,updateDoc)
       res.send(result)
   })
-    // delete a class : Instructor
+    // delete a classes : Instructor
     app.delete('/classesInstructor/:id',async(req,res)=>{
         const id = req.params.id
-        
-
         const result = await classesCollection.deleteOne({_id:new ObjectId(id)})
         res.send(result)
     })
     // get all classes
-    app.get('/classes',async(req,res)=>{
-        const result = await classesCollection.find().toArray()
-        res.send(result)
+    app.get('/AllClasses',async(req,res)=>{
+      const result = await classesCollection.find().toArray()
+      res.send(result)
     })
-    // get  classes
+    // get status wise class for only user : My Class 
+    app.get('/StatusClasses/:status',async(req,res)=>{
+      const status = req.params.status
+      const result = await classesCollection.find({status:status}).toArray()
+      res.send(result)
+  })
+    // get  classes by email : instructor
     app.get('/classes/:email',async(req,res)=>{
         const email = req.params.email
         const query = {instructorEmail:email}
         const result = await classesCollection.find(query).toArray()
-        res.send(result)
+        return res.send(result)
     })
     // update classes : Admin
     app.patch('/classes/:id',async(req,res)=>{
@@ -138,6 +144,15 @@ async function run() {
       res.send(result)
 
     })
+    //  get all instructor : instructor page
+    app.get('/allInstructor',async(req,res)=>{
+
+      const query = {role:'instructor'}
+      
+      const result = await usersCollection.find(query).toArray()
+      res.send(result)
+
+    })
     //  Chang User Role : Admin
     app.patch('/userRoleChange/:id',async(req,res)=>{
       const id = req.params.id
@@ -151,6 +166,22 @@ async function run() {
 
     })
 
+    // Enroll Related : Student
+    //  enroll class
+    app.post('/enroll',async(req,res)=>{
+
+      const newEnroll = req.body
+      const result = await enrollCollection.insertOne(newEnroll);
+      res.send(result)
+    })
+    // get enrolled class
+    app.get('/enroll/:email',async(req,res)=>{
+
+      const email = req.params.email 
+      
+      const result = await enrollCollection.find({email:email}).toArray()
+      res.send(result)
+    })
 
 
     // Send a ping to confirm a successful connection
