@@ -3,10 +3,28 @@ const app = express()
 const cors = require('cors')
 const port = process.env.PORT || 5000
 require('dotenv').config()
+var jwt = require('jsonwebtoken');
 const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY)
 // middleware
 app.use(cors())
 app.use(express.json())
+
+
+// VerifyJwt
+const VerifyJwt =(req,res,next)=>{
+  const authorization = req.headers.authorization
+  if(!authorization){
+    return res.status(401).send({error:true,message:"Unathoraized Access"})
+  }
+  const token = authorization.split(' ')[1]
+  jwt.verify(token,process.env.JWT_SECRET_KEY,(err,decoded)=>{
+    if(err){
+      return res.status(402).send({error:true,message:"Unathoraized Access"})
+    }
+    req.decoded = decoded
+    next()
+  })
+}
 
 // _______________________________MONGODB START______________________________________________
 
@@ -35,9 +53,17 @@ async function run() {
     const enrollCollection = client.db('musicianDb').collection('enroll')
     const paymentsCollection = client.db('musicianDb').collection('payments')
 
+    // JWT related :
+    app.post('/jwt',async(req,res)=>{
+      const userInfo = req.body
+      // console.log(userInfo)
+      var token = jwt.sign(userInfo, process.env.JWT_SECRET_KEY,{ expiresIn: '1h' });
+      res.send({token})
+    })
+
     // --------------------------classes Related
     // Insert a classes : Instructor
-    app.post('/classes',async(req,res)=>{
+    app.post('/classes',VerifyJwt,async(req,res)=>{
         const newClass = req.body
 
         const result = await classesCollection.insertOne(newClass)
@@ -45,7 +71,7 @@ async function run() {
     })
     
     // update a classes : Instructor
-    app.patch('/classesInstructor/:id',async(req,res)=>{
+    app.patch('/classesInstructor/:id',VerifyJwt,async(req,res)=>{
       const id = req.params.id
       const newClass = req.body
       const query = {_id:new ObjectId(id)}
@@ -57,13 +83,13 @@ async function run() {
       res.send(result)
   })
     // delete a classes : Instructor
-    app.delete('/classesInstructor/:id',async(req,res)=>{
+    app.delete('/classesInstructor/:id',VerifyJwt,async(req,res)=>{
         const id = req.params.id
         const result = await classesCollection.deleteOne({_id:new ObjectId(id)})
         res.send(result)
     })
-    // get all classes
-    app.get('/AllClasses',async(req,res)=>{
+    // get all classes 
+    app.get('/AllClasses',VerifyJwt,async(req,res)=>{
       const result = await classesCollection.find().toArray()
       res.send(result)
     })
@@ -73,8 +99,20 @@ async function run() {
       const result = await classesCollection.find({status:status}).toArray()
       res.send(result)
   })
+    // get all class which approved and by sorting : PopularClass
+    app.get('/popularClass',async(req,res)=>{
+      const status = 'approved'
+      const result = await classesCollection.find({status:status}).sort({enrolled:-1}).toArray()
+      res.send(result)
+    })
+    // get all class which approved and by sorting : PopularClass
+    app.get('/pupularInstructor',async(req,res)=>{
+      const role = 'instructor'
+      const result = await usersCollection.find({role:role}).toArray()
+      res.send(result)
+    })
     // get  classes by email : instructor
-    app.get('/classes/:email',async(req,res)=>{
+    app.get('/classes/:email',VerifyJwt,async(req,res)=>{
         const email = req.params.email
         const query = {instructorEmail:email}
         const result = await classesCollection.find(query).toArray()
@@ -109,6 +147,7 @@ async function run() {
         const result = await classesCollection.updateOne(query,updateDoc)
         res.send(result)
     })
+    // update class sets after payment
     app.patch('/classSets/:id',async(req,res)=>{
       const id = req.params.id 
       
@@ -117,6 +156,7 @@ async function run() {
         const updateDoc = {
           $set:{
             availableSets: classObj.availableSets - 1,
+            enrolled: classObj.enrolled + 1,
           }
         }
         const result = await classesCollection.updateOne({_id: new ObjectId(id)},updateDoc)
@@ -139,15 +179,18 @@ async function run() {
 
     })
     //  isAdmin Check
-    app.get('/users/:email',async(req,res)=>{
+    app.get('/users/:email',VerifyJwt,async(req,res)=>{
       const email = req.params.email
+      if(email !== req.decoded.email ){
+        return res.send({role:false})
+      }
       const query = {email:email}
       const result = await usersCollection.findOne(query)
       res.send(result)
 
     })
     //  isAdmin Check
-    app.get('/usersRole/:email',async(req,res)=>{
+    app.get('/usersRole/:email',VerifyJwt,async(req,res)=>{
       const email = req.params.email
       const query = {email:email}
       const result = await usersCollection.findOne(query)
@@ -155,7 +198,7 @@ async function run() {
 
     })
     //  get all User : Admin
-    app.get('/users',async(req,res)=>{
+    app.get('/users',VerifyJwt,async(req,res)=>{
       
       const result = await usersCollection.find().toArray()
       res.send(result)
@@ -192,7 +235,7 @@ async function run() {
       res.send(result)
     })
     // get enrolled class
-    app.get('/enroll/:email',async(req,res)=>{
+    app.get('/enroll/:email',VerifyJwt,async(req,res)=>{
 
       const email = req.params.email 
       
@@ -231,17 +274,26 @@ async function run() {
       res.send(result)
     })
     // get all payment 
-    app.get('/payments',async(req,res)=>{
+    app.get('/payments',VerifyJwt,async(req,res)=>{
 
       const result = await paymentsCollection.find().toArray()
       res.send(result)
     })
     // get  payment by email
-    app.get('/payments/:email',async(req,res)=>{
+    app.get('/payments/:email',VerifyJwt,async(req,res)=>{
       const email = req.params.email
       const result = await paymentsCollection.find({email:email}).toArray()
       res.send(result)
     })
+    // 
+    // get  payment by email With Sorting
+    app.get('/paymentsSort',VerifyJwt,async(req,res)=>{
+      const sort = parseInt(req.query.sort)
+      const email = req.query.email
+      const result = await paymentsCollection.find({email:email}).sort({date:sort}).toArray()
+      res.send(result)
+    })
+    // 
 
 
     // Send a ping to confirm a successful connection
