@@ -106,6 +106,16 @@ async function run() {
       res.send(result)
     })
     // get all class which approved and by sorting : PopularClass
+    app.get('/offerClass',async(req,res)=>{
+      const status = 'approved'
+      const options = {
+        sort:{enrolled:1},
+         projection: { imageUrl:1,_id:0 },
+      }
+      const result = await classesCollection.find({status:status},options).toArray()
+      res.send(result)
+    })
+    // get all class which approved and by sorting : PopularClass
     app.get('/pupularInstructor',async(req,res)=>{
       const role = 'instructor'
       const result = await usersCollection.find({role:role}).toArray()
